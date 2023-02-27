@@ -1,0 +1,9 @@
+# A sample config file for testing locally
+server:
+  cert-file: "/mycert"
+  key-file: "/mykey"
+  port: 5678
+  redis-address: "localhost"
+  redis-port: 6379
+  redis-db: 0
+  default-ttl: 300

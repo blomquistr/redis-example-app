@@ -29,6 +29,8 @@ type IConfig interface {
 	setRedisPort(port int)
 	getDefaultTTL() int
 	setDefaultTTL(ttl int)
+	getMaxBodySize() int
+	setMaxBodySize(size int)
 }
 
 func (c *Config) getCertFile() string {
@@ -95,6 +97,14 @@ func (c *Config) setDefaultTTL(ttl int) {
 	c.DefaultTTL = ttl
 }
 
+func (c *Config) getMaxBodySize() int {
+	return c.MaxBodySize
+}
+
+func (c *Config) setMaxBodySize(size int) {
+	c.MaxBodySize = size
+}
+
 type Config struct {
 	CertFile      string
 	KeyFile       string
@@ -104,6 +114,7 @@ type Config struct {
 	RedisPassword string
 	RedisDB       int
 	DefaultTTL    int
+	MaxBodySize   int
 }
 
 func setConfigDefaults() {
@@ -115,6 +126,7 @@ func setConfigDefaults() {
 	viper.SetDefault("server.redis-password", "")
 	viper.SetDefault("server.redis-db", 0)
 	viper.SetDefault("server.default-ttl", 300)
+	viper.SetDefault("server.max-body-size", 1048576)
 }
 
 func bindConfigEnvironment() {
@@ -127,6 +139,7 @@ func bindConfigEnvironment() {
 	viper.BindEnv("server.redis-password", fmt.Sprintf("%s_SERVER_REDIS_PASSWORD", strings.ToUpper(configPrefix)))
 	viper.BindEnv("server.redis-db", fmt.Sprintf("%s_SERVER_REDIS_DB", strings.ToUpper(configPrefix)))
 	viper.BindEnv("server.default-ttl", fmt.Sprintf("%s_SERVER_DEFAULT_TTL", strings.ToUpper(configPrefix)))
+	viper.BindEnv("server.max-body-size", fmt.Sprintf("%s_SERVER_MAX_BODY_SIZE", strings.ToUpper(configPrefix)))
 }
 
 func configureConfigFile() {
@@ -167,5 +180,6 @@ func newConfig() IConfig {
 		RedisPassword: viper.GetString("server.redis-password"),
 		RedisDB:       viper.GetInt("server.redis-db"),
 		DefaultTTL:    viper.GetInt("server.default-ttl"),
+		MaxBodySize:   viper.GetInt("server.max-body-size"),
 	}
 }

@@ -2,20 +2,25 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
+	redisCache "github.com/blomquistr/go-redis-example/v2/internal/cache"
 	"github.com/redis/go-redis/v9"
 	"k8s.io/klog"
 )
 
 var (
 	ctx    context.Context = context.TODO()
-	rdb    redis.Client
+	rdb    *redisCache.Database
 	config IConfig
 )
+
+type ReadRequest struct {
+	Key string
+}
 
 // function to ping the Redis cache and return a response
 func pingHandler(w http.ResponseWriter, r *http.Request) {
@@ -35,28 +40,45 @@ func debugHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(fmt.Sprintf("Configuration:\n==========\n[%+v]\n", config)))
 }
 
-// function to parse the TTL a user provides for their Redis cache entry and take the default value otherwise
-func parseRequestTTL(r *http.Request) (time.Duration, error) {
-	requestTTL := r.FormValue("ttl")
-	var ttl time.Duration
-	var err error
-	if requestTTL == "" {
-		ttl = time.Duration(config.getDefaultTTL())
-	} else {
-		intTTL, err := strconv.Atoi(requestTTL)
-		if err != nil {
-			return ttl, err
-		}
-		ttl = time.Duration(intTTL)
-	}
-
-	return ttl, err
+// a struct representing a request to write a value
+// to our Redis cache. Yes, it's bullshit, but it's a
+// good example of how a request in a Go web server
+// would be handled
+type Message struct {
+	Key   string
+	Value string
+	TTL   int
 }
 
 // make a Redis database entry
 func makeWorkHandler(w http.ResponseWriter, r *http.Request) {
 	klog.Info("Making some work in Redis...")
-	w.Write([]byte("Not implemented"))
+
+	// we're going to start by constructing our message request;
+	// notice how we're setting the TTL but leaving the other
+	// values blank. We will accept the user omitting the TTL
+	// value, but they must provide a key and a message for our
+	// silly little amke-work exercise
+	m := Message{
+		TTL: config.getDefaultTTL(),
+	}
+
+	err := decodeJSONBody(w, r, &m)
+	// with handling of the decoding wrapped in a separate method, we can deal with
+	// the errors that handler bubbles up in a more condensed way in our request
+	// handler method.
+	if err != nil {
+		var mr *malformedRequest
+		if errors.As(err, &mr) {
+			http.Error(w, mr.msg, mr.status)
+		} else {
+			klog.Error(err.Error())
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
+	}
+
+	// do something here to write to Redis
+	rdb.Client.Set(ctx, m.Key, m.Value, time.Duration(int64(m.TTL)))
 }
 
 // read an entry from the database
@@ -87,22 +109,29 @@ func Run() {
 	http.HandleFunc("/read-redis", readCacheHandler)
 
 	// next, lets start our Redis connection!
-	rdb := redis.NewClient(&redis.Options{
+	opts := redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", config.getRedisAddress(), config.getRedisPort()),
 		Password: config.getRedisPassword(),
 		DB:       config.getRedisDB(),
-	})
-
-	// validate that Redis is up
-	pong, err := rdb.Ping(ctx).Result()
+	}
+	rdb, err := redisCache.NewRedisDatabase(&opts)
 
 	if err != nil {
 		klog.Errorf("Error encountered connecting to Redis cache.")
 		klog.Errorf("Configuration:\n==========\n[%+v]\n", config)
+		klog.Errorf("Redis options:\n==========\n[%+v]\n", opts)
 		klog.Fatal(err)
 	}
 
-	klog.Infof("Connected to Redis database and received pong [%s] when testing the connection", pong)
+	_, err = rdb.Client.Ping(ctx).Result()
+	if err != nil {
+		klog.Errorf("Error pinging Redis cache")
+		klog.Errorf("Configuration:\n==========\n[%+v]\n", config)
+		klog.Errorf("Redis options:\n==========\n[%+v]\n", opts)
+		klog.Fatal(err)
+	} else {
+		klog.Infof("Connected to Redis database and received pong when testing the connection")
+	}
 
 	server := &http.Server{
 		Addr: fmt.Sprintf(":%d", config.getPort()),

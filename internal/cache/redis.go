@@ -29,5 +29,5 @@ func NewRedisDatabase(options *redis.Options) (*Database, error) {
 }
 
 func (d *Database) Set(key string, value string) error {
-	
+
 }

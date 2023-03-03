@@ -50,9 +50,34 @@ type Message struct {
 	TTL   int
 }
 
+func checkSupportedMethod(methods []string, method string) error {
+	for _, v := range methods {
+		if v == method {
+			return nil
+		}
+	}
+
+	return error{
+		Error: fmt.Sprintf("Method [%s] not supported; supported methods are [%v]", method, methods)
+	}
+}
+
 // make a Redis database entry
 func makeWorkHandler(w http.ResponseWriter, r *http.Request) {
 	klog.Info("Making some work in Redis...")
+
+	// Lets make sure we have the right type of request - we only
+	// want to handle POST or PUT requests.
+	switch r.Method {
+	case "POST":
+		klog.Info("Processing POST request for new cache entry")
+	case "PUT":
+		klog.Info("Processing PUT request to update existing cache entry")
+	default:
+		msg := fmt.Sprintf("Invalid request method [%s], supported methods include PUT and POST", r.Method)
+		http.Error(w, msg, http.StatusMethodNotAllowed)
+		return
+	}
 
 	// we're going to start by constructing our message request;
 	// notice how we're setting the TTL but leaving the other
@@ -75,6 +100,7 @@ func makeWorkHandler(w http.ResponseWriter, r *http.Request) {
 			klog.Error(err.Error())
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
+		return
 	}
 
 	// do something here to write to Redis
@@ -84,6 +110,16 @@ func makeWorkHandler(w http.ResponseWriter, r *http.Request) {
 // read an entry from the database
 func readCacheHandler(w http.ResponseWriter, r *http.Request) {
 	klog.Info("Reading something from the Redis cache...")
+
+	switch r.Method {
+	case "GET":
+		klog.Info("Processing GET request to retrieve a cache entry")
+	default:
+		msg := fmt.Sprintf("Invalid request method [%s], supported methods include PUT and POST", r.Method)
+		http.Error(w, msg, http.StatusMethodNotAllowed)
+		return
+	}
+
 	w.Write([]byte("Not implemented"))
 }
 

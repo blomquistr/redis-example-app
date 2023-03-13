@@ -3,12 +3,14 @@ package cache
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
 
 type Database struct {
-	Client *redis.Client
+	Client  *redis.Client
+	context context.Context
 }
 
 var (
@@ -16,7 +18,7 @@ var (
 	defaultContext = context.TODO()
 )
 
-func NewRedisDatabase(options *redis.Options) (*Database, error) {
+func NewRedisDatabase(options *redis.Options, ctx context.Context) (*Database, error) {
 	client := redis.NewClient(options)
 
 	if err := client.Ping(defaultContext).Err(); err != nil {
@@ -24,10 +26,15 @@ func NewRedisDatabase(options *redis.Options) (*Database, error) {
 	}
 
 	return &Database{
-		Client: client,
+		Client:  client,
+		context: ctx,
 	}, nil
 }
 
-func (d *Database) Set(key string, value string) error {
+func (d *Database) Ping() (string, error) {
+	return d.Client.Ping(d.context).Result()
+}
 
+func (d *Database) Set(key string, value string, expiration time.Duration) (string, error) {
+	return d.Client.Set(d.context, key, value, expiration).Result()
 }

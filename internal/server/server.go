@@ -58,7 +58,7 @@ func checkSupportedMethod(methods []string, method string) error {
 	}
 
 	return error{
-		Error: fmt.Sprintf("Method [%s] not supported; supported methods are [%v]", method, methods)
+		Error: fmt.Sprintf("Method [%s] not supported; supported methods are [%v]", method, methods),
 	}
 }
 
@@ -150,7 +150,7 @@ func Run() {
 		Password: config.getRedisPassword(),
 		DB:       config.getRedisDB(),
 	}
-	rdb, err := redisCache.NewRedisDatabase(&opts)
+	rdb, err := redisCache.NewRedisDatabase(&opts, ctx)
 
 	if err != nil {
 		klog.Errorf("Error encountered connecting to Redis cache.")

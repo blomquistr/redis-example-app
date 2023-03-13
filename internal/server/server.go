@@ -159,7 +159,7 @@ func Run() {
 		Password: config.getRedisPassword(),
 		DB:       config.getRedisDB(),
 	}
-	rdb, err := redisCache.NewRedisDatabase(&opts)
+	rdb, err := redisCache.NewRedisDatabase(&opts, ctx)
 
 	if err != nil {
 		klog.Errorf("Error encountered connecting to Redis cache.")

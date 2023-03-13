@@ -1,0 +1,5 @@
+{
+  "key": "test_entry",
+  "value": "I'm a test value as a string!",
+  "ttl": 5
+}

@@ -122,3 +122,25 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) err
 
 	return nil
 }
+
+// TODO: Move the logic for rolling up a JSON object from the main server to this
+// helper once I've figured out what that code looks like
+func encodeJSONBody(w http.ResponseWriter, dst interface{}) error {
+	// first, lets marshal our struct into a []byte; we don't want to set
+	// the header yet, though, as our response will return an error, not
+	// JSON, if the marshaling fails. We could also configure our API to
+	// always return JSON, but that's a little bit of a different lesson
+	resp, err := json.Marshal(dst)
+	if err != nil {
+		return err
+	}
+
+	// OK, we have successfully marshaled our response; we know we're
+	// sending valid JSON back. Time to set the header, then write the
+	// resposne back to the ResponseWriter
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(resp)
+
+	// no errors, so we can safely return nil
+	return nil
+}

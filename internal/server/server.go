@@ -57,14 +57,24 @@ func checkSupportedMethod(methods []string, method string) error {
 		}
 	}
 
-	return error{
-		Error: fmt.Sprintf("Method [%s] not supported; supported methods are [%v]", method, methods),
-	}
+	return errors.New(
+		fmt.Sprintf("Invalid request method [%s], supported methods are [%s]", method, methods),
+	)
 }
 
 // make a Redis database entry
 func makeWorkHandler(w http.ResponseWriter, r *http.Request) {
 	klog.Info("Making some work in Redis...")
+
+	// check to make sure we have the right request method, and
+	// if not return that information to the caller to re-submit
+	// their request
+	methods := []string{"PUT", "POST"}
+	err := checkSupportedMethod(methods, r.Method)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusMethodNotAllowed)
+		return
+	}
 
 	// Lets make sure we have the right type of request - we only
 	// want to handle POST or PUT requests.
@@ -74,7 +84,7 @@ func makeWorkHandler(w http.ResponseWriter, r *http.Request) {
 	case "PUT":
 		klog.Info("Processing PUT request to update existing cache entry")
 	default:
-		msg := fmt.Sprintf("Invalid request method [%s], supported methods include PUT and POST", r.Method)
+		msg := fmt.Sprintf(fmt.Sprintf("Invalid request method [%s], supported methods are [%s]", r.Method, "PUT, POST"))
 		http.Error(w, msg, http.StatusMethodNotAllowed)
 		return
 	}
@@ -88,7 +98,7 @@ func makeWorkHandler(w http.ResponseWriter, r *http.Request) {
 		TTL: config.getDefaultTTL(),
 	}
 
-	err := decodeJSONBody(w, r, &m)
+	err = decodeJSONBody(w, r, &m)
 	// with handling of the decoding wrapped in a separate method, we can deal with
 	// the errors that handler bubbles up in a more condensed way in our request
 	// handler method.

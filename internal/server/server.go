@@ -58,7 +58,7 @@ func checkSupportedMethod(methods []string, method string) error {
 	}
 
 	return errors.New(
-		fmt.Sprintf("Invalid request method [%s], supported methods include [%s]", method, methods),
+		fmt.Sprintf("Invalid request method [%s], supported methods are [%s]", method, methods),
 	)
 }
 
@@ -66,10 +66,11 @@ func checkSupportedMethod(methods []string, method string) error {
 func makeWorkHandler(w http.ResponseWriter, r *http.Request) {
 	klog.Info("Making some work in Redis...")
 
-	// check the supported method type and, if it is not supported, return
-	// a MethodNotAllowed status to the caller
-	supportedMethods := []string{"POST", "PUT"}
-	err := checkSupportedMethod(supportedMethods, r.Method)
+	// check to make sure we have the right request method, and
+	// if not return that information to the caller to re-submit
+	// their request
+	methods := []string{"PUT", "POST"}
+	err := checkSupportedMethod(methods, r.Method)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusMethodNotAllowed)
 		return
@@ -83,7 +84,7 @@ func makeWorkHandler(w http.ResponseWriter, r *http.Request) {
 	case "PUT":
 		klog.Info("Processing PUT request to update existing cache entry")
 	default:
-		msg := fmt.Sprintf("Invalid request method [%s], supported methods include [%s]", r.Method, supportedMethods)
+		msg := fmt.Sprintf(fmt.Sprintf("Invalid request method [%s], supported methods are [%s]", r.Method, "PUT, POST"))
 		http.Error(w, msg, http.StatusMethodNotAllowed)
 		return
 	}

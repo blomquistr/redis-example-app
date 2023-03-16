@@ -199,9 +199,17 @@ func readCacheHandler(w http.ResponseWriter, r *http.Request) {
 	// now we have a key, lets read it from the Redis database
 	result, err := rdb.Get(m.Key)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		klog.Error(fmt.Sprintf("Found result [%s]", result))
+		klog.Error(fmt.Sprintf("Received error response [%s]", err.Error()))
+		if result == "" && err.Error() == "redis: nil" {
+			result = "nil"
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
+
+	klog.Info(fmt.Sprintf("Found result [%s]", result))
 
 	// finally, we want to return our value as JSON, so we're
 	// going to use json.Marshal to convert it. The use of a
